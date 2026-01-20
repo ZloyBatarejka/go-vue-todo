@@ -1,0 +1,17 @@
+# env (локальные секреты)
+.env
+.env.*
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# build / tmp
+tmp/
+
+
