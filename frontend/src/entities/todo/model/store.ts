@@ -24,7 +24,7 @@ export const useTodoStore = defineStore('todo', () => {
         isLoading.value = true
         try {
             const createdTodo = await todoApiService.create(todo)
-            todos.value.push(createdTodo)
+            todos.value.unshift(createdTodo)
         } catch (error) {
             console.error('Failed to create todo', error)
         } finally {

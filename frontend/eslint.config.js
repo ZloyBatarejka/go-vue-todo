@@ -31,6 +31,13 @@ export default [
       },
     },
     rules: {
+      'vue/max-attributes-per-line': [
+        'warn',
+        {
+          singleline: { max: 1 },
+          multiline: { max: 1 },
+        },
+      ],
       // "дефолт" под Vue 3: большинство SFC сейчас используют <script setup>
       'vue/multi-word-component-names': 'off',
       // на ранней стадии проекта удобнее не душить форматированием

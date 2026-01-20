@@ -66,7 +66,7 @@ func (r *todoRepository) Create(todo *models.Todo) error {
 
 // GetAll получает все задачи из БД
 func (r *todoRepository) GetAll() ([]*models.Todo, error) {
-	query := `SELECT id, value, date FROM todos ORDER BY id`
+	query := `SELECT id, value, date FROM todos ORDER BY id DESC`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
