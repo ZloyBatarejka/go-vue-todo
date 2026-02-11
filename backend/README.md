@@ -56,6 +56,25 @@ go install github.com/air-verse/air@latest
 
 Сервер запустится на `http://localhost:8080`
 
+## Swagger (API документация)
+
+1) Запусти сервер (см. раздел **Запуск**) — он стартует на `http://localhost:8080`.
+2) Открой Swagger UI в браузере:
+
+`http://localhost:8080/swagger/index.html`
+
+### Генерация swagger.json/yaml (для фронта / автогенерации API)
+
+В репозитории есть корневая папка `swagger/` (рядом с `frontend/` и `backend/`) — туда складываются артефакты:
+- `swagger/swagger.json`
+- `swagger/swagger.yaml`
+
+Чтобы обновить Swagger, из **корня репозитория** запусти:
+
+```powershell
+.\swagger\gen-swagger.ps1
+```
+
 ## API Endpoints
 
 ### Создать Todo
