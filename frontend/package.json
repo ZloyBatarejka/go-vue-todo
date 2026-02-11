@@ -8,7 +8,10 @@
         "build": "vue-tsc && vite build",
         "preview": "vite preview",
         "lint": "eslint .",
-        "lint:fix": "eslint . --fix"
+        "lint:fix": "eslint . --fix",
+        "gen:swagger": "powershell -NoProfile -ExecutionPolicy Bypass -File ../swagger/gen-swagger.ps1",
+        "gen:api": "npx --yes swagger-typescript-api generate -p ../swagger/swagger.json -o src/shared/api/generated -n index.ts",
+        "gen": "npm run gen:swagger && npm run gen:api"
     },
     "dependencies": {
         "pinia": "^3.0.4",
@@ -21,6 +24,7 @@
         "@vitejs/plugin-vue": "^5.2.1",
         "eslint": "^9.39.2",
         "eslint-plugin-vue": "^10.7.0",
+        "swagger-typescript-api": "^13.2.10",
         "typescript": "^5.6.3",
         "typescript-eslint": "^8.53.1",
         "vite": "^6.0.5",

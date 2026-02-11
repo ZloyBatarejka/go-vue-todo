@@ -23,3 +23,10 @@ dist
 dist-ssr
 *.local
 
+# generated API client (swagger-typescript-api)
+src/shared/api/generated/*
+!src/shared/api/generated/README.md
+
+# generated API client folder (keep dir itself untracked; README is committed)
+!src/shared/api/generated/
+
