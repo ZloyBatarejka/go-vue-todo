@@ -106,9 +106,8 @@ func (h *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
 // DeleteTodo godoc
 // @Summary Delete todo by id
 // @Tags todos
-// @Produce json
 // @Param id path int true "Todo ID"
-// @Success 200 {object} models.MessageResponse
+// @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Router /todos/{id} [delete]
@@ -128,7 +127,7 @@ func (h *TodoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, models.MessageResponse{Message: "Todo deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {

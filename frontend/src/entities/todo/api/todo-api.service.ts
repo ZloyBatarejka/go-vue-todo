@@ -1,22 +1,21 @@
-import { TodoEndpoints } from "@/shared/config"
 import { ITodoApiService, CreateTodoDto, DeleteTodoDto } from "./todo-api.contract"
-import { httpClient, ApiClient } from "@shared/api"
 import { TodoType } from "../model"
+import { api } from "@shared/api"
+import { toCreateTodoRequest, toTodoType, toTodoTypeList } from "./converters"
 
 export class TodoApiService implements ITodoApiService {
-    constructor(private readonly httpClient: ApiClient) { }
 
     fetchAll(): Promise<TodoType[]> {
-        return this.httpClient.get<TodoType[]>(TodoEndpoints.getAll)
+        return api.todos.todosList().then(toTodoTypeList)
     }
 
     create(dto: CreateTodoDto): Promise<TodoType> {
-        return this.httpClient.post<TodoType>(TodoEndpoints.create, dto)
+        return api.todos.todosCreate(toCreateTodoRequest(dto)).then(toTodoType)
     }
 
     delete(dto: DeleteTodoDto): Promise<void> {
-        return this.httpClient.delete<void>(TodoEndpoints.delete(dto.id))
+        return api.todos.todosDelete(dto.id)
     }
 }
 
-export const todoApiService = new TodoApiService(httpClient)
+export const todoApiService = new TodoApiService()

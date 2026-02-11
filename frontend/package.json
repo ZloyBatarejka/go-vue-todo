@@ -4,13 +4,16 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "predev": "npm run gen",
+        "prebuild": "npm run gen",
         "dev": "vite",
+        "type-check": "vue-tsc --noEmit",
         "build": "vue-tsc && vite build",
         "preview": "vite preview",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "gen:swagger": "powershell -NoProfile -ExecutionPolicy Bypass -File ../swagger/gen-swagger.ps1",
-        "gen:api": "npx --yes swagger-typescript-api generate -p ../swagger/swagger.json -o src/shared/api/generated -n index.ts",
+        "gen:api": "npx --yes swagger-typescript-api generate -p ../swagger/swagger.json -o src/shared/api/generated -n index.ts --unwrap-response-data",
         "gen": "npm run gen:swagger && npm run gen:api"
     },
     "dependencies": {

@@ -1,1 +1,1 @@
-export { default as AddTodo } from './addTodo.vue' 
+export { default as AddTodo } from './AddTodo.vue'

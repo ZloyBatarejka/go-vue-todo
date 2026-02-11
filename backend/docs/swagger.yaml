@@ -10,11 +10,6 @@ definitions:
       error:
         type: string
     type: object
-  models.MessageResponse:
-    properties:
-      message:
-        type: string
-    type: object
   models.Todo:
     properties:
       date:
@@ -84,13 +79,9 @@ paths:
         name: id
         required: true
         type: integer
-      produces:
-      - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.MessageResponse'
+        "204":
+          description: No Content
         "400":
           description: Bad Request
           schema:

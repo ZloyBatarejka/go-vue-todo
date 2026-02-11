@@ -129,12 +129,7 @@ go install github.com/air-verse/air@latest
 
 **DELETE** `/api/todos/{id}`
 
-**Response (200 OK):**
-```json
-{
-  "message": "Todo deleted successfully"
-}
-```
+**Response (204 No Content):** (тело ответа отсутствует)
 
 ## Примеры использования
 
