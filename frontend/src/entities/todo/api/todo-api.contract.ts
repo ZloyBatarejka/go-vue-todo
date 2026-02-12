@@ -1,11 +1,11 @@
-import { TodoType } from "../model"
+import type { TodoType } from "../model"
 
-export type CreateTodoDto = Pick<TodoType, 'value'>
-export type DeleteTodoDto = Pick<TodoType, 'id'>
+export type CreateTodoDto = Pick<TodoType, "value">;
+export type DeleteTodoDto = Pick<TodoType, "id">
 
-export interface ITodoApiService {
-    fetchAll(): Promise<TodoType[]>
-    create(dto: CreateTodoDto): Promise<TodoType>
-    delete(dto: DeleteTodoDto): Promise<void>
+export interface ITodoApiService {  
+	fetchAll(): Promise<TodoType[]> 
+	create(dto: CreateTodoDto): Promise<TodoType>;     
+	delete(dto: DeleteTodoDto): Promise<void>;
 }
-
+  

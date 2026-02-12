@@ -2,6 +2,9 @@
 // @version 1.0
 // @host localhost:8080
 // @BasePath /api
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
@@ -10,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -18,7 +22,9 @@ import (
 
 	"goTodo/backend/database"
 	"goTodo/backend/handlers"
+	"goTodo/backend/middleware"
 	"goTodo/backend/repository"
+	"goTodo/backend/services"
 
 	_ "goTodo/backend/docs"
 )
@@ -41,16 +47,31 @@ func main() {
 	defer db.Close()
 
 	todoRepo := repository.NewTodoRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	authService, err := services.NewAuthService(
+		getEnv("JWT_SECRET", "dev-secret-change-me"),
+		time.Duration(getEnvInt("JWT_ACCESS_TTL_MINUTES", 60))*time.Minute,
+	)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth service: %v", err)
+	}
 
 	todoHandler := handlers.NewTodoHandler(todoRepo)
+	authHandler := handlers.NewAuthHandler(userRepo, authService)
 
 	router := mux.NewRouter()
 
 	api := router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/todos", todoHandler.GetAllTodos).Methods("GET")
-	api.HandleFunc("/todos", todoHandler.CreateTodo).Methods("POST")
-	api.HandleFunc("/todos/{id:[0-9]+}", todoHandler.GetTodo).Methods("GET")
-	api.HandleFunc("/todos/{id:[0-9]+}", todoHandler.DeleteTodo).Methods("DELETE")
+	api.HandleFunc("/auth/register", authHandler.Register).Methods("POST")
+	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST")
+
+	// Все todo-эндпоинты требуют валидный Bearer access-токен.
+	authRequired := middleware.AuthMiddleware(authService)
+	api.Handle("/todos", authRequired(http.HandlerFunc(todoHandler.GetAllTodos))).Methods("GET")
+	api.Handle("/todos", authRequired(http.HandlerFunc(todoHandler.CreateTodo))).Methods("POST")
+	api.Handle("/todos/{id:[0-9]+}", authRequired(http.HandlerFunc(todoHandler.GetTodo))).Methods("GET")
+	api.Handle("/todos/{id:[0-9]+}", authRequired(http.HandlerFunc(todoHandler.DeleteTodo))).Methods("DELETE")
 
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -62,6 +83,8 @@ func main() {
 	port := ":8080"
 	fmt.Printf("Server starting on http://localhost%s\n", port)
 	fmt.Println("API endpoints:")
+	fmt.Println("  POST   /api/auth/register")
+	fmt.Println("  POST   /api/auth/login")
 	fmt.Println("  GET    /api/todos")
 	fmt.Println("  POST   /api/todos")
 	fmt.Println("  GET    /api/todos/{id}")
@@ -70,9 +93,10 @@ func main() {
 	fmt.Println("  GET    /swagger/index.html")
 
 	corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173"},
+		AllowedOrigins: []string{getEnv("CORS_ALLOWED_ORIGIN", "http://localhost:5173")},
 		AllowedMethods: []string{"GET", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type"},
+		// Authorization нужен для Bearer JWT в protected эндпоинтах.
+		AllowedHeaders: []string{"Content-Type", "Authorization"},
 	}).Handler(router)
 
 	if err := http.ListenAndServe(port, corsHandler); err != nil {

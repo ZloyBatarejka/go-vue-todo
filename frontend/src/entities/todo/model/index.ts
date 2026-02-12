@@ -1,2 +1,2 @@
-export type { TodoType } from './types'
-export { useTodoManager } from './manager'
+export { useTodoManager } from "./manager"
+export type { TodoType } from "./types"

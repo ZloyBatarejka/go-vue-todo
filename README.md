@@ -59,3 +59,7 @@ Backend разрешает запросы с origin `http://localhost:5173` (Vit
 npm run lint
 npm run lint:fix
 ```
+
+## Планы / заметки
+
+- JWT авторизация (план внедрения): `JWT_AUTH_PLAN.md`

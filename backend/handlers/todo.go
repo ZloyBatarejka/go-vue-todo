@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 
+	"goTodo/backend/middleware"
 	"goTodo/backend/models"
 	"goTodo/backend/repository"
 )
@@ -28,9 +31,18 @@ func NewTodoHandler(repo repository.TodoRepository) *TodoHandler {
 // @Param request body models.CreateTodoRequest true "Create todo request"
 // @Success 201 {object} models.Todo
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
+// @Security BearerAuth
 // @Router /todos [post]
 func (h *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
+	// userID приходит из AuthMiddleware через context.
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	var req models.CreateTodoRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -47,7 +59,7 @@ func (h *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 		Value: req.Value,
 	}
 
-	if err := h.repo.Create(todo); err != nil {
+	if err := h.repo.Create(todo, userID); err != nil {
 		log.Printf("Error creating todo: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to create todo")
 		return
@@ -61,10 +73,18 @@ func (h *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 // @Tags todos
 // @Produce json
 // @Success 200 {array} models.Todo
+// @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
+// @Security BearerAuth
 // @Router /todos [get]
 func (h *TodoHandler) GetAllTodos(w http.ResponseWriter, r *http.Request) {
-	todos, err := h.repo.GetAll()
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	todos, err := h.repo.GetAllByUserID(userID)
 	if err != nil {
 		log.Printf("Error getting todos: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Failed to get todos")
@@ -81,9 +101,18 @@ func (h *TodoHandler) GetAllTodos(w http.ResponseWriter, r *http.Request) {
 // @Param id path int true "Todo ID"
 // @Success 200 {object} models.Todo
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Security BearerAuth
 // @Router /todos/{id} [get]
 func (h *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 
@@ -93,10 +122,15 @@ func (h *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todo, err := h.repo.GetByID(id)
+	todo, err := h.repo.GetByIDForUser(id, userID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, "Todo not found")
+			return
+		}
+
 		log.Printf("Error getting todo: %v", err)
-		respondWithError(w, http.StatusNotFound, "Todo not found")
+		respondWithError(w, http.StatusInternalServerError, "Failed to get todo")
 		return
 	}
 
@@ -109,9 +143,18 @@ func (h *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
 // @Param id path int true "Todo ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Security BearerAuth
 // @Router /todos/{id} [delete]
 func (h *TodoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 
@@ -121,9 +164,14 @@ func (h *TodoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.Delete(id); err != nil {
+	if err := h.repo.DeleteForUser(id, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, "Todo not found")
+			return
+		}
+
 		log.Printf("Error deleting todo: %v", err)
-		respondWithError(w, http.StatusNotFound, "Todo not found")
+		respondWithError(w, http.StatusInternalServerError, "Failed to delete todo")
 		return
 	}
 
