@@ -1,49 +1,8 @@
 import { defineStore } from "pinia"
 import { computed, ref } from "vue"
 import { setApiAuthToken } from "@/shared/api"
-import { isAuthUser } from "../lib/guards"
 import { authApiService } from "../api"
 import type { AuthSession, AuthStatus, AuthUser } from "./types"
-
-const TOKEN_STORAGE_KEY = "goTodo.auth.token"
-const USER_STORAGE_KEY = "goTodo.auth.user"
-
-const readTokenFromStorage = (): string | null => {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY)
-    return token && token.trim() !== "" ? token : null
-}
-
-const readUserFromStorage = (): AuthUser | null => {
-    const raw = localStorage.getItem(USER_STORAGE_KEY)
-    if (!raw) {
-        return null
-    }
-
-    try {
-        const parsed: unknown = JSON.parse(raw)
-        if (isAuthUser(parsed)) {
-            return parsed
-        }
-
-        console.error("Stored auth user has invalid shape")
-        localStorage.removeItem(USER_STORAGE_KEY)
-        return null
-    } catch (error) {
-        console.error("Failed to parse stored auth user", error)
-        localStorage.removeItem(USER_STORAGE_KEY)
-        return null
-    }
-}
-
-const writeSessionToStorage = (session: AuthSession) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, session.token)
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user))
-}
-
-const clearSessionFromStorage = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY)
-    localStorage.removeItem(USER_STORAGE_KEY)
-}
 
 export const useAuthStore = defineStore("auth", () => {
     const token = ref<string | null>(null)
@@ -52,11 +11,13 @@ export const useAuthStore = defineStore("auth", () => {
 
     const isAuthenticated = computed(() => authStatus.value === "authenticated")
 
-    const initAuth = () => {
-        token.value = readTokenFromStorage()
-        user.value = readUserFromStorage()
-        authStatus.value = token.value ? "authenticated" : "unauthenticated"
-        setApiAuthToken(token.value)
+    const initAuth = async () => {
+        try {
+            const session = await authApiService.refresh()
+            setSession(session)
+        } catch {
+            clearSession()
+        }
     }
 
     const setSession = (session: AuthSession) => {
@@ -64,17 +25,17 @@ export const useAuthStore = defineStore("auth", () => {
         user.value = session.user
         authStatus.value = "authenticated"
         setApiAuthToken(session.token)
-        writeSessionToStorage(session)
+    }
+
+    const clearSession = () => {
+        token.value = null
+        user.value = null
+        authStatus.value = "unauthenticated"
+        setApiAuthToken(null)
     }
 
     const setUser = (nextUser: AuthUser | null) => {
         user.value = nextUser
-        if (nextUser) {
-            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser))
-            return
-        }
-
-        localStorage.removeItem(USER_STORAGE_KEY)
     }
 
     const login = async (username: string, password: string) => {
@@ -87,12 +48,14 @@ export const useAuthStore = defineStore("auth", () => {
         setSession(session)
     }
 
-    const logout = () => {
-        token.value = null
-        user.value = null
-        authStatus.value = "unauthenticated"
-        setApiAuthToken(null)
-        clearSessionFromStorage()
+    const logout = async () => {
+        try {
+            await authApiService.logout()
+        } catch (error) {
+            console.error("Failed to logout", error)
+        } finally {
+            clearSession()
+        }
     }
 
     return {
@@ -102,6 +65,7 @@ export const useAuthStore = defineStore("auth", () => {
         isAuthenticated,
         initAuth,
         setSession,
+        clearSession,
         setUser,
         login,
         register,

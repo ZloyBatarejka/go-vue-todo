@@ -26,7 +26,7 @@ export const useTodoStore = defineStore("todo", () => {
 
 	const handleTodoRequestError = (operation: string, error: unknown) => {
 		if (isUnauthorizedError(error)) {
-			useAuthStore().logout()
+			void useAuthStore().logout()
 			clearTodos()
 			console.error(`Failed to ${operation}: unauthorized`)
 			return

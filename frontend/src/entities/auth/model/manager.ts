@@ -7,11 +7,14 @@ export const useAuthManager = () => {
     const { token, user, authStatus, isAuthenticated } = storeToRefs(store)
 
     const actions = {
-        initAuth: () => {
-            store.initAuth()
+        initAuth: async () => {
+            await store.initAuth()
         },
         setSession: (session: AuthSession) => {
             store.setSession(session)
+        },
+        clearSession: () => {
+            store.clearSession()
         },
         setUser: (nextUser: AuthUser | null) => {
             store.setUser(nextUser)
@@ -22,8 +25,8 @@ export const useAuthManager = () => {
         register: async (username: string, password: string) => {
             await store.register(username, password)
         },
-        logout: () => {
-            store.logout()
+        logout: async () => {
+            await store.logout()
         }
     }
 

@@ -5,11 +5,15 @@ import '../shared/assets/main.css'
 import { createPinia } from 'pinia'
 import { useAuthStore } from '@entities/auth/model'
 
-const app = createApp(App)
-const pinia = createPinia()
+const bootstrap = async () => {
+    const app = createApp(App)
+    const pinia = createPinia()
 
-app.use(pinia)
-useAuthStore(pinia).initAuth()
+    app.use(pinia)
+    await useAuthStore(pinia).initAuth()
 
-app.use(router).mount('#app')
+    app.use(router).mount('#app')
+}
+
+void bootstrap()
 

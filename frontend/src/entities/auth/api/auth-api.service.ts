@@ -33,6 +33,19 @@ export class AuthApiService implements IAuthApiService {
         })
             .then(toAuthSession)
     }
+
+    refresh(): Promise<AuthSession> {
+        return api.auth.refreshCreate({
+            secure: false,
+        })
+            .then(toAuthSession)
+    }
+
+    logout(): Promise<void> {
+        return api.auth.logoutCreate({
+            secure: false,
+        })
+    }
 }
 
 export const authApiService = new AuthApiService()
