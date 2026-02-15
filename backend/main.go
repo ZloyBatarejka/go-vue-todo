@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -48,23 +49,42 @@ func main() {
 
 	todoRepo := repository.NewTodoRepository(db)
 	userRepo := repository.NewUserRepository(db)
+	refreshSessionRepo := repository.NewRefreshSessionRepository(db)
+
+	refreshTokenTTL := time.Duration(getEnvInt("JWT_REFRESH_TTL_HOURS", 168)) * time.Hour
 
 	authService, err := services.NewAuthService(
 		getEnv("JWT_SECRET", "dev-secret-change-me"),
 		time.Duration(getEnvInt("JWT_ACCESS_TTL_MINUTES", 60))*time.Minute,
+		refreshTokenTTL,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize auth service: %v", err)
 	}
 
 	todoHandler := handlers.NewTodoHandler(todoRepo)
-	authHandler := handlers.NewAuthHandler(userRepo, authService)
+	authHandler := handlers.NewAuthHandler(
+		userRepo,
+		refreshSessionRepo,
+		authService,
+		refreshTokenTTL,
+		handlers.RefreshCookieConfig{
+			Name:     getEnv("REFRESH_COOKIE_NAME", "goTodo_refresh_token"),
+			Domain:   getEnv("REFRESH_COOKIE_DOMAIN", ""),
+			Path:     getEnv("REFRESH_COOKIE_PATH", "/api/auth"),
+			Secure:   getEnvBool("REFRESH_COOKIE_SECURE", false),
+			HTTPOnly: getEnvBool("REFRESH_COOKIE_HTTPONLY", true),
+			SameSite: parseSameSite(getEnv("REFRESH_COOKIE_SAMESITE", "Lax")),
+		},
+	)
 
 	router := mux.NewRouter()
 
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/auth/register", authHandler.Register).Methods("POST")
 	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST")
+	api.HandleFunc("/auth/refresh", authHandler.Refresh).Methods("POST")
+	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST")
 
 	// Все todo-эндпоинты требуют валидный Bearer access-токен.
 	authRequired := middleware.AuthMiddleware(authService)
@@ -85,6 +105,8 @@ func main() {
 	fmt.Println("API endpoints:")
 	fmt.Println("  POST   /api/auth/register")
 	fmt.Println("  POST   /api/auth/login")
+	fmt.Println("  POST   /api/auth/refresh")
+	fmt.Println("  POST   /api/auth/logout")
 	fmt.Println("  GET    /api/todos")
 	fmt.Println("  POST   /api/todos")
 	fmt.Println("  GET    /api/todos/{id}")
@@ -95,8 +117,10 @@ func main() {
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins: []string{getEnv("CORS_ALLOWED_ORIGIN", "http://localhost:5173")},
 		AllowedMethods: []string{"GET", "POST", "DELETE", "OPTIONS"},
-		// Authorization нужен для Bearer JWT в protected эндпоинтах.
-		AllowedHeaders: []string{"Content-Type", "Authorization"},
+		// Authorization нужен для Bearer JWT; Cookie/Set-Cookie — для refresh flow.
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		ExposedHeaders:   []string{"Set-Cookie"},
+		AllowCredentials: true,
 	}).Handler(router)
 
 	if err := http.ListenAndServe(port, corsHandler); err != nil {
@@ -121,4 +145,33 @@ func getEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return i
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	value := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	if value == "" {
+		return fallback
+	}
+
+	switch value {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
+}
+
+func parseSameSite(value string) http.SameSite {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "none":
+		return http.SameSiteNoneMode
+	case "strict":
+		return http.SameSiteStrictMode
+	case "lax":
+		return http.SameSiteLaxMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }

@@ -1,6 +1,10 @@
 package services
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -12,11 +16,13 @@ import (
 )
 
 var (
-	ErrInvalidToken          = errors.New("invalid access token")
-	ErrInvalidTokenSigning   = errors.New("invalid token signing method")
-	ErrInvalidCredentials    = errors.New("invalid credentials")
-	ErrEmptyJWTSecret        = errors.New("jwt secret is required")
-	ErrInvalidAccessTokenTTL = errors.New("access token ttl must be greater than zero")
+	ErrInvalidToken           = errors.New("invalid access token")
+	ErrInvalidTokenSigning    = errors.New("invalid token signing method")
+	ErrInvalidCredentials     = errors.New("invalid credentials")
+	ErrEmptyJWTSecret         = errors.New("jwt secret is required")
+	ErrInvalidAccessTokenTTL  = errors.New("access token ttl must be greater than zero")
+	ErrInvalidRefreshTokenTTL = errors.New("refresh token ttl must be greater than zero")
+	ErrFailedToGenerateToken  = errors.New("failed to generate token")
 )
 
 // AuthService описывает операции прикладной авторизации.
@@ -27,6 +33,8 @@ type AuthService interface {
 	VerifyPassword(password string, passwordHash string) error
 	GenerateAccessToken(userID int64, username string) (string, error)
 	ValidateAccessToken(token string) (*AccessTokenClaims, error)
+	GenerateRefreshToken() (string, string, error)
+	HashRefreshToken(token string) string
 }
 
 // AccessTokenClaims хранит payload access-токена.
@@ -42,26 +50,31 @@ type AccessTokenClaims struct {
 // Содержит секрет подписи, TTL access-токена и источник времени,
 // который можно подменять в тестах для предсказуемых сценариев.
 type authService struct {
-	jwtSecret      []byte
-	accessTokenTTL time.Duration
-	now            func() time.Time
+	jwtSecret       []byte
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
+	now             func() time.Time
 }
 
 // NewAuthService создает новый экземпляр AuthService с проверкой входных параметров.
 // Параметры: jwtSecret — секрет для HS256 подписи; accessTokenTTL — срок жизни access.
 // Возвращает: готовый сервис или ошибку, если секрет пустой/TTL некорректный.
-func NewAuthService(jwtSecret string, accessTokenTTL time.Duration) (AuthService, error) {
+func NewAuthService(jwtSecret string, accessTokenTTL time.Duration, refreshTokenTTL time.Duration) (AuthService, error) {
 	if strings.TrimSpace(jwtSecret) == "" {
 		return nil, ErrEmptyJWTSecret
 	}
 	if accessTokenTTL <= 0 {
 		return nil, ErrInvalidAccessTokenTTL
 	}
+	if refreshTokenTTL <= 0 {
+		return nil, ErrInvalidRefreshTokenTTL
+	}
 
 	return &authService{
-		jwtSecret:      []byte(jwtSecret),
-		accessTokenTTL: accessTokenTTL,
-		now:            time.Now,
+		jwtSecret:       []byte(jwtSecret),
+		accessTokenTTL:  accessTokenTTL,
+		refreshTokenTTL: refreshTokenTTL,
+		now:             time.Now,
 	}, nil
 }
 
@@ -133,4 +146,20 @@ func (s *authService) ValidateAccessToken(token string) (*AccessTokenClaims, err
 	}
 
 	return claims, nil
+}
+
+// GenerateRefreshToken создает новый opaque refresh token и его SHA-256 hash для хранения в БД.
+func (s *authService) GenerateRefreshToken() (string, string, error) {
+	randomBytes := make([]byte, 32)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", "", fmt.Errorf("%w: %v", ErrFailedToGenerateToken, err)
+	}
+
+	rawToken := base64.RawURLEncoding.EncodeToString(randomBytes)
+	return rawToken, s.HashRefreshToken(rawToken), nil
+}
+
+func (s *authService) HashRefreshToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }
