@@ -11,6 +11,9 @@ export const useTodoManager = () => {
         },
         deleteTodo: async (id: number) => {
             await store.deleteTodo(id)
+        },
+        clearTodos: () => {
+            store.clearTodos()
         }
     }
 

@@ -9,6 +9,24 @@ const API_BASE_URL = 'http://localhost:8080/api'
  */
 export const api = new Api({
     baseUrl: API_BASE_URL,
+    baseApiParams: {
+        secure: true,
+    },
+    securityWorker: (token: string | null) => {
+        if (!token) {
+            return {}
+        }
+
+        return {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        }
+    },
 })
+
+export const setApiAuthToken = (token: string | null) => {
+    api.setSecurityData(token)
+}
 
 

@@ -31,9 +31,7 @@ func NewTodoHandler(repo repository.TodoRepository) *TodoHandler {
 // @Param request body models.CreateTodoRequest true "Create todo request"
 // @Success 201 {object} models.Todo
 // @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Security BearerAuth
 // @Router /todos [post]
 func (h *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	// userID приходит из AuthMiddleware через context.
@@ -73,9 +71,7 @@ func (h *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 // @Tags todos
 // @Produce json
 // @Success 200 {array} models.Todo
-// @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Security BearerAuth
 // @Router /todos [get]
 func (h *TodoHandler) GetAllTodos(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
@@ -101,10 +97,7 @@ func (h *TodoHandler) GetAllTodos(w http.ResponseWriter, r *http.Request) {
 // @Param id path int true "Todo ID"
 // @Success 200 {object} models.Todo
 // @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Security BearerAuth
 // @Router /todos/{id} [get]
 func (h *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
@@ -143,10 +136,7 @@ func (h *TodoHandler) GetTodo(w http.ResponseWriter, r *http.Request) {
 // @Param id path int true "Todo ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Security BearerAuth
 // @Router /todos/{id} [delete]
 func (h *TodoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
